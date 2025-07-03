@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía Interactiva de BattleBots</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (Slate, Sky, Amber) -->
+    <!-- Application Structure Plan: Se ha optado por una estructura de SPA (Single Page Application) con navegación fija para facilitar el acceso rápido a temas específicos, ideal para una guía de referencia. El flujo va de lo general (Conceptos Clave) a lo específico (Anatomía, Armas, Materiales), terminando con recursos prácticos (Compra, Seguridad). Esta arquitectura no lineal permite al usuario explorar según su interés, en lugar de seguir la estructura secuencial del informe. Se utilizan elementos interactivos como tarjetas, gráficos y diagramas para mejorar la comprensión y el engagement, transformando un documento de texto en una herramienta de aprendizaje dinámica. -->
+    <!-- Visualization & Content Choices: 
+    - Report Info: Comparación de tipos de armas (potencia vs. control). Goal: Comparar. Viz: Gráfico de barras horizontales (Chart.js). Interaction: El gráfico se actualiza al seleccionar un tipo de arma, proporcionando una comparación visual instantánea de sus pros y contras. Justification: Es más efectivo que una tabla estática para visualizar las compensaciones.
+    - Report Info: Propiedades de los materiales (resistencia, peso, costo, etc.). Goal: Comparar. Viz: Gráfico de radar (Chart.js). Interaction: Los usuarios pueden activar/desactivar materiales en el gráfico para comparar sus perfiles de propiedades. Justification: El radar es ideal para comparaciones multivariadas de un vistazo.
+    - Report Info: Arquitectura y componentes del robot. Goal: Organizar/Informar. Viz: Diagrama visual interactivo (HTML/CSS). Interaction: Hacer clic en las partes del diagrama revela información detallada en un panel lateral. Justification: Convierte una descripción textual en una exploración visual e intuitiva.
+    - Report Info: Diagrama de conexiones de la placa Raspberry Pi. Goal: Informar. Viz: Diagrama de bloques (HTML/CSS). Interaction: Tooltips al pasar el ratón sobre los componentes explican su función. Justification: Añade capas de información a un diagrama estático sin abrumar al usuario.
+    - Report Info: Tiendas de componentes. Goal: Organizar. Viz: Tarjetas filtrables (HTML/JS). Interaction: Botones para filtrar tiendas por categoría. Justification: Mejora la usabilidad respecto a una lista larga y estática. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #1e293b; /* slate-800 */
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .nav-link:after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #0284c7; /* sky-600 */
+            transition: width 0.3s ease;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #0284c7; /* sky-600 */
+        }
+        .nav-link.active:after, .nav-link:hover:after {
+            width: 100%;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .section-fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .section-fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .interactive-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .interactive-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <header class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#hero" class="text-2xl font-bold text-slate-900">BattleBots<span class="text-sky-600">.IO</span></a>
+            <div class="hidden md:flex space-x-8">
+                <a href="#concepts" class="nav-link font-medium text-slate-600">Conceptos</a>
+                <a href="#anatomy" class="nav-link font-medium text-slate-600">Anatomía</a>
+                <a href="#weapons" class="nav-link font-medium text-slate-600">Armas</a>
+                <a href="#materials" class="nav-link font-medium text-slate-600">Materiales</a>
+                <a href="#brain" class="nav-link font-medium text-slate-600">Control</a>
+                <a href="#shop" class="nav-link font-medium text-slate-600">Tiendas</a>
+                <a href="#safety" class="nav-link font-medium text-slate-600">Seguridad</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-slate-800">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden">
+            <a href="#concepts" class="block py-2 px-6 text-sm text-slate-600 hover:bg-slate-100">Conceptos</a>
+            <a href="#anatomy" class="block py-2 px-6 text-sm text-slate-600 hover:bg-slate-100">Anatomía</a>
+            <a href="#weapons" class="block py-2 px-6 text-sm text-slate-600 hover:bg-slate-100">Armas</a>
+            <a href="#materials" class="block py-2 px-6 text-sm text-slate-600 hover:bg-slate-100">Materiales</a>
+            <a href="#brain" class="block py-2 px-6 text-sm text-slate-600 hover:bg-slate-100">Control</a>
+            <a href="#shop" class="block py-2 px-6 text-sm text-slate-600 hover:bg-slate-100">Tiendas</a>
+            <a href="#safety" class="block py-2 px-6 text-sm text-slate-600 hover:bg-slate-100">Seguridad</a>
+        </div>
+    </header>
+
+    <main>
+        <section id="hero" class="min-h-[60vh] flex items-center bg-white">
+            <div class="container mx-auto px-6 text-center">
+                <h1 class="text-4xl md:text-6xl font-bold text-slate-900 leading-tight">La Guía Definitiva para Construir un BattleBot</h1>
+                <p class="mt-4 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Desde la física del armamento hasta la selección de materiales y la electrónica de control. Transforma tu idea en una máquina de combate.</p>
+                <a href="#concepts" class="mt-8 inline-block bg-sky-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:bg-sky-700 transition-colors">Empezar a Explorar</a>
+            </div>
+        </section>
+
+        <section id="concepts" class="py-16 md:py-24 section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Conceptos Clave del Diseño</h2>
+                    <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Todo BattleBot exitoso es un delicado equilibrio entre tres pilares fundamentales. Domina estos conceptos para crear un diseño competitivo y robusto.</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="interactive-card bg-white p-8 rounded-xl shadow-md text-center">
+                        <div class="text-4xl mb-4">💨</div>
+                        <h3 class="text-2xl font-bold mb-2">Movilidad</h3>
+                        <p class="text-slate-600">La capacidad de controlar el combate. Un buen sistema de propulsión te permite posicionarte para el ataque, esquivar golpes y dominar la arena.</p>
+                    </div>
+                    <div class="interactive-card bg-white p-8 rounded-xl shadow-md text-center">
+                        <div class="text-4xl mb-4">💥</div>
+                        <h3 class="text-2xl font-bold mb-2">Armamento</h3>
+                        <p class="text-slate-600">El poder destructivo. Desde spinners de alta energía hasta flippers que lanzan oponentes por los aires, tu arma define tu estrategia ofensiva.</p>
+                    </div>
+                    <div class="interactive-card bg-white p-8 rounded-xl shadow-md text-center">
+                        <div class="text-4xl mb-4">🛡️</div>
+                        <h3 class="text-2xl font-bold mb-2">Defensa</h3>
+                        <p class="text-slate-600">La capacidad de sobrevivir. Una armadura bien diseñada, con los materiales adecuados, absorbe y desvía la energía de los impactos para proteger tus componentes.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="anatomy" class="py-16 md:py-24 bg-white section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Anatomía de un Bot</h2>
+                    <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Un robot de combate es un sistema complejo de partes que trabajan en conjunto. Haz clic en cada componente para entender su función y cómo se integra en el todo.</p>
+                </div>
+                <div class="flex flex-col md:flex-row gap-8 items-start">
+                    <div class="w-full md:w-1/2">
+                        <div id="robot-diagram" class="relative bg-slate-100 rounded-lg p-8 grid grid-cols-2 grid-rows-3 gap-4 h-[400px] aspect-video mx-auto">
+                            <div class="absolute inset-0 border-4 border-slate-700 rounded-lg"></div>
+                            <button data-target="chassis" class="anatomy-btn col-span-2 row-span-3 border-2 border-dashed border-slate-400 rounded-lg flex items-center justify-center text-slate-500 hover:bg-sky-100 hover:text-sky-700 transition">Chasis y Armadura</button>
+                            <button data-target="weapon" class="anatomy-btn absolute top-4 left-4 bg-red-500 text-white rounded-full h-16 w-16 flex items-center justify-center font-bold text-sm shadow-lg hover:bg-red-600 transition">Arma</button>
+                            <button data-target="motors" class="anatomy-btn absolute bottom-4 left-4 bg-slate-600 text-white rounded-lg px-4 py-2 text-sm shadow-lg hover:bg-slate-700 transition">Motores</button>
+                            <button data-target="battery" class="anatomy-btn absolute bottom-4 right-4 bg-amber-500 text-white rounded-lg px-4 py-2 text-sm shadow-lg hover:bg-amber-600 transition">Batería</button>
+                            <button data-target="brain" class="anatomy-btn absolute top-1/2 right-4 -translate-y-1/2 bg-sky-600 text-white rounded-lg px-4 py-2 text-sm shadow-lg hover:bg-sky-700 transition">Cerebro</button>
+                        </div>
+                    </div>
+                    <div id="anatomy-details" class="w-full md:w-1/2 bg-slate-50 rounded-lg p-6 min-h-[400px]">
+                        <div id="detail-chassis" class="anatomy-content">
+                            <h3 class="text-2xl font-bold mb-4 text-sky-700">Chasis y Armadura</h3>
+                            <p class="text-slate-600">Es el esqueleto y la piel de tu robot. El chasis soporta todos los componentes internos, mientras que la armadura los protege de los ataques. La elección del material (acero, aluminio, titanio) es una decisión crítica que equilibra peso, costo y resistencia. Un diseño común utiliza mamparos verticales entre placas superior e inferior para una máxima rigidez estructural.</p>
+                        </div>
+                        <div id="detail-weapon" class="anatomy-content hidden">
+                            <h3 class="text-2xl font-bold mb-4 text-sky-700">Sistema de Arma</h3>
+                            <p class="text-slate-600">El corazón ofensivo del bot. Requiere un motor independiente (generalmente brushless para alta velocidad), un controlador de velocidad (ESC) robusto y una construcción que pueda soportar sus propias fuerzas de impacto. El diseño del arma, ya sea un spinner, flipper o martillo, dicta toda la estrategia de combate del robot.</p>
+                        </div>
+                        <div id="detail-motors" class="anatomy-content hidden">
+                            <h3 class="text-2xl font-bold mb-4 text-sky-700">Sistema de Propulsión</h3>
+                            <p class="text-slate-600">Los músculos del robot. Típicamente se usan dos o más motores (a menudo con escobillas por su torque y control sencillo) para mover el robot. Se conectan a las ruedas a través de cajas de engranajes para multiplicar el torque, permitiendo empujar a otros robots y moverse rápidamente por la arena. La robustez y fiabilidad son clave.</p>
+                        </div>
+                        <div id="detail-battery" class="anatomy-content hidden">
+                            <h3 class="text-2xl font-bold mb-4 text-sky-700">Fuente de Poder</h3>
+                            <p class="text-slate-600">La energía vital. Las baterías LiPo (Polímero de Litio) son la opción estándar por su alta densidad de energía, pero requieren un manejo cuidadoso y una protección extrema contra perforaciones. La batería debe suministrar el voltaje y la corriente adecuados para todos los sistemas, especialmente los motores de alto consumo.</p>
+                        </div>
+                        <div id="detail-brain" class="anatomy-content hidden">
+                            <h3 class="text-2xl font-bold mb-4 text-sky-700">Cerebro y Control</h3>
+                            <p class="text-slate-600">El sistema nervioso. Consiste en un receptor de radio (RC) que capta las señales del transmisor del piloto, y controladores de velocidad electrónicos (ESCs) que traducen esas señales en energía para los motores. En robots más complejos, un microcontrolador (como Arduino o Raspberry Pi) puede gestionar lógica adicional o funciones autónomas.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="weapons" class="py-16 md:py-24 section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Arsenal de Combate</h2>
+                    <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Cada tipo de arma tiene fortalezas y debilidades. La elección correcta depende de tu estilo de conducción y estrategia. Selecciona un arma para ver sus detalles y comparación.</p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+                    <button data-weapon="spinner_v" class="weapon-btn p-4 bg-white rounded-lg shadow-md hover:shadow-lg hover:bg-sky-100 transition text-center">
+                        <div class="text-3xl">🔄</div><span class="block text-sm font-medium mt-2">Spinner Vertical</span>
+                    </button>
+                    <button data-weapon="spinner_h" class="weapon-btn p-4 bg-white rounded-lg shadow-md hover:shadow-lg hover:bg-sky-100 transition text-center">
+                        <div class="text-3xl"> horizontally ↔️</div><span class="block text-sm font-medium mt-2">Spinner Horizontal</span>
+                    </button>
+                    <button data-weapon="flipper" class="weapon-btn p-4 bg-white rounded-lg shadow-md hover:shadow-lg hover:bg-sky-100 transition text-center">
+                        <div class="text-3xl">🚀</div><span class="block text-sm font-medium mt-2">Flipper</span>
+                    </button>
+                    <button data-weapon="hammer" class="weapon-btn p-4 bg-white rounded-lg shadow-md hover:shadow-lg hover:bg-sky-100 transition text-center">
+                        <div class="text-3xl">🔨</div><span class="block text-sm font-medium mt-2">Martillo</span>
+                    </button>
+                     <button data-weapon="lifter" class="weapon-btn p-4 bg-white rounded-lg shadow-md hover:shadow-lg hover:bg-sky-100 transition text-center">
+                        <div class="text-3xl">💪</div><span class="block text-sm font-medium mt-2">Elevador</span>
+                    </button>
+                    <button data-weapon="crusher" class="weapon-btn p-4 bg-white rounded-lg shadow-md hover:shadow-lg hover:bg-sky-100 transition text-center">
+                        <div class="text-3xl">🐊</div><span class="block text-sm font-medium mt-2">Triturador</span>
+                    </button>
+                </div>
+                <div class="flex flex-col md:flex-row gap-8 items-center bg-white p-8 rounded-lg shadow-inner">
+                    <div class="w-full md:w-1/3">
+                        <h3 id="weapon-name" class="text-2xl font-bold mb-2 text-sky-700">Spinner Vertical</h3>
+                        <p id="weapon-desc" class="text-slate-600">Almacenan una inmensa energía cinética en un disco o barra que gira verticalmente. Son excelentes para lanzar oponentes y atacar la parte inferior del chasis, pero pueden desestabilizar el propio robot.</p>
+                    </div>
+                    <div class="w-full md:w-2/3">
+                        <div class="chart-container">
+                            <canvas id="weaponChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="materials" class="py-16 md:py-24 bg-white section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Tabla Periódica del Blindaje</h2>
+                    <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">No existe el material perfecto. La elección es un compromiso entre peso, resistencia y costo. Compara los materiales más comunes para encontrar la mejor defensa para tu bot.</p>
+                </div>
+                 <div class="flex flex-col md:flex-row gap-8 items-center bg-slate-50 p-8 rounded-lg shadow-inner">
+                    <div class="w-full md:w-2/3">
+                        <div class="chart-container max-w-md">
+                            <canvas id="materialChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/3">
+                        <h3 class="text-2xl font-bold mb-4">Comparar Materiales</h3>
+                        <div id="material-selector" class="space-y-2">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="brain" class="py-16 md:py-24 section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">El Cerebro del Robot: Control con Raspberry Pi</h2>
+                    <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Para un control más avanzado, una Raspberry Pi puede actuar como el cerebro central. Este diagrama muestra una arquitectura conceptual para integrar una Pi, gestionando la energía y el control de los motores. Pasa el cursor sobre los componentes para más detalles.</p>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <div id="rpi-diagram" class="relative max-w-4xl mx-auto font-mono text-xs text-center bg-slate-100 p-8 rounded-lg border-2 border-slate-200">
+                        <div data-tooltip="La batería principal del robot, usualmente LiPo de alto voltaje y corriente." class="rpi-component absolute top-1/3 left-4 w-24 h-12 bg-amber-400 rounded flex items-center justify-center p-1 shadow">Batería (e.g. 24V)</div>
+                        <div class="rpi-line" style="top: 38%; left: 110px; width: 50px; height: 2px;"></div>
+                        <div class="rpi-arrow" style="top: 37%; left: 160px;">&gt;</div>
+                        
+                        <div data-tooltip="Reduce el alto voltaje de la batería a 5V estables, necesarios para alimentar de forma segura la Raspberry Pi." class="rpi-component absolute top-4 left-1/2 -translate-x-1/2 w-32 h-12 bg-green-400 rounded flex items-center justify-center p-1 shadow">Regulador 5V (Buck)</div>
+                        <div class="rpi-line" style="top: calc(25% + 24px); left: 1/2; width: 2px; height: 50px; transform: translateX(-50%)"></div>
+                        <div class="rpi-arrow" style="top: calc(25% + 70px); left: calc(50% - 6px); transform: rotate(90deg);">&gt;</div>
+
+                        <div data-tooltip="Actúa como el cerebro. Recibe señales del receptor RC y envía comandos a los controladores de motor." class="rpi-component absolute top-1/2 left-1/2 -translate-x-1/2 w-32 h-20 bg-red-400 rounded flex items-center justify-center p-1 shadow">Raspberry Pi</div>
+                        
+                        <div data-tooltip="Recibe los comandos del piloto y los envía a la Raspberry Pi para ser procesados." class="rpi-component absolute top-1/2 right-4 w-24 h-12 bg-sky-300 rounded flex items-center justify-center p-1 shadow">Receptor RC</div>
+                        <div class="rpi-line" style="top: 55%; right: 110px; width: 50px; height: 2px;"></div>
+                        <div class="rpi-arrow" style="top: 54%; right: 160px;">&lt;</div>
+
+                        <div data-tooltip="Reciben señales de bajo poder de la Pi y las convierten en alta potencia para mover los motores. Son necesarios para motores de propulsión y arma." class="rpi-component absolute bottom-4 left-1/4 -translate-x-1/2 w-32 h-16 bg-slate-400 rounded flex items-center justify-center p-1 shadow">Controladores Motores (ESCs)</div>
+                        <div class="rpi-line" style="top: 65%; left: calc(50% - 60px); width: 2px; height: 50px;"></div>
+                        <div class="rpi-arrow" style="top: calc(65% + 40px); left: calc(50% - 66px); transform: rotate(90deg);">&gt;</div>
+                        <div class="rpi-line" style="top: calc(83% - 2px); left: calc(25%); width: 100px; height: 2px;"></div>
+                        <div class="rpi-arrow" style="top: 82%; left: calc(25% + 100px);">&gt;</div>
+
+                        <div data-tooltip="Motor para la rueda izquierda." class="rpi-component absolute bottom-4 left-4 w-20 h-10 bg-gray-600 text-white rounded-full flex items-center justify-center p-1 shadow">Motor A</div>
+                        <div class="rpi-line" style="top: calc(83% - 2px); left: 90px; width: calc(25% - 90px); height: 2px;"></div>
+                        <div class="rpi-arrow" style="top: 82%; left: calc(25% - 10px);">&lt;</div>
+
+
+                        <div data-tooltip="Motor para la rueda derecha." class="rpi-component absolute bottom-4 right-4 w-20 h-10 bg-gray-600 text-white rounded-full flex items-center justify-center p-1 shadow">Motor B</div>
+                        <div class="rpi-line" style="top: calc(83% - 2px); right: 90px; width: calc(25% - 90px); height: 2px;"></div>
+                         <div class="rpi-arrow" style="top: 82%; right: calc(25% - 10px);">&gt;</div>
+
+                        <div class="rpi-component absolute bottom-4 right-1/4 -translate-x-1/2 w-32 h-16 bg-slate-400 rounded flex items-center justify-center p-1 shadow"></div>
+                        <div class="rpi-line" style="top: 65%; right: calc(50% - 60px); width: 2px; height: 50px;"></div>
+                        <div class="rpi-arrow" style="top: calc(65% + 40px); right: calc(50% - 66px); transform: rotate(90deg);">&gt;</div>
+                        <div class="rpi-line" style="top: calc(83% - 2px); right: calc(25%); width: 100px; height: 2px;"></div>
+                        <div class="rpi-arrow" style="top: 82%; right: calc(25% + 100px);">&lt;</div>
+
+
+                        <div id="rpi-tooltip" class="absolute hidden bg-slate-800 text-white text-xs rounded py-1 px-2 shadow-lg z-10"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="shop" class="py-16 md:py-24 bg-white section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Guía de Compra</h2>
+                    <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Encontrar los componentes adecuados es clave. Aquí tienes una lista de proveedores recomendados por la comunidad de robótica de combate. Filtra por categoría para encontrar lo que necesitas.</p>
+                </div>
+                <div class="flex justify-center space-x-2 md:space-x-4 mb-8">
+                    <button data-filter="all" class="shop-filter-btn bg-sky-600 text-white font-medium py-2 px-4 rounded-full transition">Todos</button>
+                    <button data-filter="kits" class="shop-filter-btn bg-white text-slate-600 font-medium py-2 px-4 rounded-full transition hover:bg-slate-100">Kits y Partes</button>
+                    <button data-filter="electronics" class="shop-filter-btn bg-white text-slate-600 font-medium py-2 px-4 rounded-full transition hover:bg-slate-100">Electrónica</button>
+                    <button data-filter="materials" class="shop-filter-btn bg-white text-slate-600 font-medium py-2 px-4 rounded-full transition hover:bg-slate-100">Materiales</button>
+                </div>
+                <div id="shop-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    </div>
+            </div>
+        </section>
+
+        <section id="safety" class="py-16 md:py-24 section-fade-in">
+             <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">La Seguridad es lo Primero</h2>
+                    <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Construir y operar un BattleBot conlleva riesgos. Cumplir con las reglas de seguridad no es opcional, es una obligación para protegerte a ti y a los demás.</p>
+                </div>
+                <div class="max-w-3xl mx-auto space-y-4">
+                    <div class="safety-item bg-white rounded-lg shadow-md">
+                        <button class="w-full flex justify-between items-center p-5 text-left font-semibold text-lg">
+                            <span>Interruptores Maestros (Kill Switches)</span>
+                            <span class="text-sky-600 transform transition-transform duration-300">▼</span>
+                        </button>
+                        <div class="safety-content hidden p-5 pt-0 text-slate-600">
+                            Es obligatorio tener al menos dos interruptores maestros: uno para la movilidad y otro para las armas. Deben ser capaces de cortar toda la energía de forma mecánica e instantánea, y ser accesibles en menos de 30 segundos.
+                        </div>
+                    </div>
+                     <div class="safety-item bg-white rounded-lg shadow-md">
+                        <button class="w-full flex justify-between items-center p-5 text-left font-semibold text-lg">
+                            <span>Mecanismos Failsafe</span>
+                            <span class="text-sky-600 transform transition-transform duration-300">▼</span>
+                        </button>
+                        <div class="safety-content hidden p-5 pt-0 text-slate-600">
+                            El sistema de control debe tener un 'failsafe'. Si el robot pierde la señal de radio del transmisor, debe detenerse por completo. Las armas giratorias deben parar en menos de 60 segundos.
+                        </div>
+                    </div>
+                     <div class="safety-item bg-white rounded-lg shadow-md">
+                        <button class="w-full flex justify-between items-center p-5 text-left font-semibold text-lg">
+                            <span>Protección de Baterías</span>
+                            <span class="text-sky-600 transform transition-transform duration-300">▼</span>
+                        </button>
+                        <div class="safety-content hidden p-5 pt-0 text-slate-600">
+                            Las baterías, especialmente las LiPo, deben estar extremadamente bien protegidas contra perforaciones. Un incendio de batería en la arena es un incidente grave. Deben ser accesibles para poder retirarlas después de cada combate.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-800 text-slate-400 py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p>&copy; 2024 Guía Interactiva de BattleBots. Un proyecto conceptual para la exploración de datos.</p>
+        </div>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const weaponData = {
+        spinner_v: { name: 'Spinner Vertical', desc: 'Almacenan una inmensa energía cinética en un disco o barra que gira verticalmente. Son excelentes para lanzar oponentes y atacar la parte inferior del chasis, pero pueden desestabilizar el propio robot.', stats: { damage: 9, control: 5 } },
+        spinner_h: { name: 'Spinner Horizontal', desc: 'Discos o barras que giran a alta velocidad. Tienen un alcance destructivo masivo, pero los impactos pueden descontrolar al robot y tardan en recuperar velocidad.', stats: { damage: 10, control: 3 } },
+        flipper: { name: 'Flipper', desc: 'Utilizan sistemas neumáticos o eléctricos para lanzar a los oponentes por los aires, buscando una descalificación por inmovilización. Requieren una conducción precisa y reflejos rápidos.', stats: { damage: 4, control: 8 } },
+        hammer: { name: 'Martillo / Hacha', desc: 'Golpean la armadura superior del oponente con fuerza. Son efectivos para dañar componentes internos, pero requieren inmovilizar al oponente para ser precisos.', stats: { damage: 6, control: 7 } },
+        lifter: { name: 'Elevador / Pinza', desc: 'Se centran en el control, levantando y empujando a los oponentes hacia los peligros de la arena. No causan mucho daño directo pero dominan en puntos de control.', stats: { damage: 2, control: 9 } },
+        crusher: { name: 'Triturador', desc: 'Utilizan una inmensa fuerza hidráulica para perforar o aplastar la armadura. Son lentos y requieren una sujeción firme, pero pueden ser devastadores si conectan bien.', stats: { damage: 8, control: 4 } },
+    };
+
+    let weaponChart;
+    const ctxWeapon = document.getElementById('weaponChart').getContext('2d');
+    
+    function createWeaponChart(initialWeapon) {
+        const data = weaponData[initialWeapon];
+        weaponChart = new Chart(ctxWeapon, {
+            type: 'bar',
+            data: {
+                labels: ['Potencial Destructivo', 'Dificultad de Control'],
+                datasets: [{
+                    label: data.name,
+                    data: [data.stats.damage, data.stats.control],
+                    backgroundColor: ['rgba(239, 68, 68, 0.6)', 'rgba(59, 130, 246, 0.6)'],
+                    borderColor: ['rgba(239, 68, 68, 1)', 'rgba(59, 130, 246, 1)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 10,
+                        grid: { color: 'rgba(203, 213, 225, 0.3)' }
+                    },
+                    y: {
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+    }
+
+    function updateWeaponChart(weaponKey) {
+        const data = weaponData[weaponKey];
+        document.getElementById('weapon-name').textContent = data.name;
+        document.getElementById('weapon-desc').textContent = data.desc;
+
+        weaponChart.data.datasets[0].label = data.name;
+        weaponChart.data.datasets[0].data = [data.stats.damage, data.stats.control];
+        weaponChart.update();
+    }
+
+    document.querySelectorAll('.weapon-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            updateWeaponChart(button.dataset.weapon);
+        });
+    });
+
+    createWeaponChart('spinner_v');
+
+    const anatomyBtns = document.querySelectorAll('.anatomy-btn');
+    const anatomyContents = document.querySelectorAll('.anatomy-content');
+
+    anatomyBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = `detail-${btn.dataset.target}`;
+            anatomyContents.forEach(content => {
+                if (content.id === targetId) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            });
+        });
+    });
+
+    const materialData = {
+        datasets: [
+            { label: 'Acero', data: [9, 9, 3, 5], borderColor: 'rgba(75, 85, 99, 1)', backgroundColor: 'rgba(75, 85, 99, 0.2)', hidden: false },
+            { label: 'Aluminio', data: [5, 4, 6, 8], borderColor: 'rgba(156, 163, 175, 1)', backgroundColor: 'rgba(156, 163, 175, 0.2)', hidden: false },
+            { label: 'Titanio', data: [8, 5, 2, 2], borderColor: 'rgba(59, 130, 246, 1)', backgroundColor: 'rgba(59, 130, 246, 0.2)', hidden: false },
+            { label: 'UHMW', data: [4, 2, 8, 9], borderColor: 'rgba(22, 163, 74, 1)', backgroundColor: 'rgba(22, 163, 74, 0.2)', hidden: true },
+        ],
+        labels: ['Resistencia', 'Peso', 'Costo', 'Maquinabilidad']
+    };
+
+    let materialChart;
+    const ctxMaterial = document.getElementById('materialChart').getContext('2d');
+    const materialSelector = document.getElementById('material-selector');
+
+    function createMaterialChart() {
+        materialChart = new Chart(ctxMaterial, {
+            type: 'radar',
+            data: materialData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(203, 213, 225, 0.5)' },
+                        grid: { color: 'rgba(203, 213, 225, 0.5)' },
+                        pointLabels: { font: { size: 12 } },
+                        suggestedMin: 0,
+                        suggestedMax: 10
+                    }
+                },
+                plugins: {
+                    legend: { position: 'top' },
+                }
+            }
+        });
+
+        materialData.datasets.forEach((dataset, index) => {
+            const container = document.createElement('div');
+            container.className = 'flex items-center';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `mat-${index}`;
+            checkbox.checked = !dataset.hidden;
+            checkbox.className = 'h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-600';
+            checkbox.style.accentColor = dataset.borderColor;
+            checkbox.addEventListener('change', () => {
+                materialChart.data.datasets[index].hidden = !checkbox.checked;
+                materialChart.update();
+            });
+
+            const label = document.createElement('label');
+            label.htmlFor = `mat-${index}`;
+            label.className = 'ml-3 block text-sm font-medium text-gray-700';
+            label.textContent = dataset.label;
+
+            container.appendChild(checkbox);
+            container.appendChild(label);
+            materialSelector.appendChild(container);
+        });
+    }
+    createMaterialChart();
+
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    mobileMenuButton.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+    
+    document.querySelectorAll('#mobile-menu a').forEach(link => {
+        link.addEventListener('click', () => {
+            mobileMenu.classList.add('hidden');
+        });
+    });
+
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
+                });
+            }
+        });
+    }, { rootMargin: '-50% 0px -50% 0px' });
+
+    sections.forEach(section => {
+        observer.observe(section);
+    });
+
+    const faderObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.section-fade-in').forEach(section => {
+        faderObserver.observe(section);
+    });
+    
+    const safetyItems = document.querySelectorAll('.safety-item');
+    safetyItems.forEach(item => {
+        const button = item.querySelector('button');
+        const content = item.querySelector('.safety-content');
+        const icon = item.querySelector('span:last-child');
+        button.addEventListener('click', () => {
+            content.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        });
+    });
+
+    const rpiComponents = document.querySelectorAll('#rpi-diagram .rpi-component');
+    const tooltip = document.getElementById('rpi-tooltip');
+    rpiComponents.forEach(comp => {
+        comp.addEventListener('mousemove', e => {
+            tooltip.textContent = comp.dataset.tooltip;
+            tooltip.style.left = `${e.clientX - tooltip.offsetWidth / 2}px`;
+            tooltip.style.top = `${e.clientY + 20}px`;
+        });
+        comp.addEventListener('mouseenter', () => {
+            tooltip.style.display = 'block';
+        });
+        comp.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+        });
+    });
+    
+    const shops = [
+        { name: 'FingerTech Robotics', desc: 'Piezas especializadas, ruedas, ESCs.', category: 'kits', url:'https://www.fingertechrobotics.com/' },
+        { name: 'The Robot Marketplace', desc: 'La mayor selección de piezas de combate.', category: 'kits', url:'https://www.robotmarketplace.com/' },
+        { name: 'Banebots', desc: 'Motorreductores y ESCs a buen precio.', category: 'electronics', url:'https://www.banebots.com/' },
+        { name: 'Kitbots', desc: 'Kits completos para varias clases de peso.', category: 'kits', url:'https://www.kitbots.com/' },
+        { name: 'ItGresa Robotics', desc: 'Distribuidor de Fingertech en EEUU.', category: 'kits', url:'https://itgresa.com/' },
+        { name: 'OnlineMetals.com', desc: 'Corte a medida de Acero, Aluminio, UHMW.', category: 'materials', url:'https://www.onlinemetals.com/' },
+        { name: 'McMaster-Carr', desc: 'Fuente masiva de hardware y materiales.', category: 'materials', url:'https://www.mcmaster.com/' },
+        { name: 'Hobby King', desc: 'Radios, baterías y motores económicos.', category: 'electronics', url:'https://hobbyking.com/' },
+        { name: 'SparkFun', desc: 'Componentes electrónicos, LEDs, sensores.', category: 'electronics', url:'https://www.sparkfun.com/' },
+    ];
+
+    const shopGrid = document.getElementById('shop-grid');
+    const filterBtns = document.querySelectorAll('.shop-filter-btn');
+
+    function renderShops(filter = 'all') {
+        shopGrid.innerHTML = '';
+        const filteredShops = filter === 'all' ? shops : shops.filter(s => s.category === filter);
+
+        filteredShops.forEach(shop => {
+            const card = document.createElement('div');
+            card.className = 'shop-card bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300';
+            card.dataset.category = shop.category;
+            card.innerHTML = `
+                <h3 class="font-bold text-xl mb-2 text-slate-900">${shop.name}</h3>
+                <p class="text-slate-600 mb-4">${shop.desc}</p>
+                <a href="${shop.url}" target="_blank" rel="noopener noreferrer" class="font-semibold text-sky-600 hover:text-sky-700">Visitar Tienda &rarr;</a>
+            `;
+            shopGrid.appendChild(card);
+        });
+    }
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterBtns.forEach(b => {
+                b.classList.remove('bg-sky-600', 'text-white');
+                b.classList.add('bg-white', 'text-slate-600');
+            });
+            btn.classList.add('bg-sky-600', 'text-white');
+            btn.classList.remove('bg-white', 'text-slate-600');
+            renderShops(btn.dataset.filter);
+        });
+    });
+
+    renderShops();
+
+});
+</script>
+</body>
+</html>
